@@ -20,7 +20,7 @@ class SQL():
     def getTables(self,DB_NAME):
         cursorTab = self.orgconn.cursor();
         cursorTab.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES");
-	return  cursorTab.fetchall();
+        return  cursorTab.fetchall();
 
     def createTable(self,tables):
         cursorCol  = self.orgconn.cursor();
@@ -42,17 +42,23 @@ class SQL():
             sqlQuery = "%s CASE IS_NULLABLE when 'YES' THEN '' ELSE ' NOT NULL'  END )" % sqlQuery 
             sqlQuery = "%s from INFORMATION_SCHEMA.COLUMNS where TABLE_name='%s' " % (sqlQuery,row[0])
             sqlQuery = "%s  order by ORDINAL_POSITION" % sqlQuery
-#           print sqlQuery
-#           break
             cursorCol.execute(sqlQuery);
-	    createSQL= "create table %s (" % row[0];
+            createSQL= "create table %s (" % row[0];
             comma=''
             for col in cursorCol:
                createSQL= "%s %s %s " % (createSQL,comma, col[0]);
                comma=','
             createSQL='%s);' %  createSQL
-            print createSQL;
-            #print "Create table %s" % row[0]
             cursorDest.execute( createSQL );
-            
-#           break;
+    def getRelation(self,dbName):
+        sql = ""
+        sql= "%s SELECT  obj.name AS FK_NAME,sch.name AS [schema_name],tab1.name AS [table], " % sql ;
+        sql = "%s col1.name AS [column],tab2.name AS [referenced_table],col2.name AS [referenced_column] " % sql;
+        sql = "%s FROM sys.foreign_key_columns fkc INNER JOIN sys.objects obj ON obj.object_id = fkc.constraint_object_id " % sql
+        sql = "%s INNER JOIN sys.tables tab1 ON tab1.object_id = fkc.parent_object_id " % sql
+        sql = "%s INNER JOIN sys.schemas sch ON tab1.schema_id = sch.schema_id INNER JOIN sys.columns col1 " % sql
+        sql = "%s ON col1.column_id = parent_column_id AND col1.object_id = tab1.object_id "  % sql
+        sql = "%s INNER JOIN sys.tables tab2 ON tab2.object_id = fkc.referenced_object_id " % sql 
+        sql = "%s INNER JOIN sys.columns col2 ON col2.column_id = referenced_column_id AND col2.object_id = tab2.object_id " % sql
+        print(sql);
+        
