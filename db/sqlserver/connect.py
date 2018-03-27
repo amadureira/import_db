@@ -6,7 +6,7 @@ class SQL():
     orgpwd = "12qwRE$#56tydesweb"
     orgdb  = "DB_DES_CASASBAHIA_VIA_UNICA_MOBILE"
     orgconn = "";
-
+#   js = {} ;
     destsrv = "10.128.132.167:1167"
     destusr =  "usr_hom_web"
     destpwd = "12qwRE$#56tyhomweb"
@@ -51,6 +51,9 @@ class SQL():
             createSQL='%s);' %  createSQL
             cursorDest.execute( createSQL );
     def getRelation(self,dbName):
+        cursor = [['a','b'],['b','c'],['b','d'],['b','e']]
+        cursor  = self.orgconn.cursor();
+        js= {} 
         sql = ""
         sql= "%s SELECT  obj.name AS FK_NAME,sch.name AS [schema_name],tab1.name AS [table], " % sql ;
         sql = "%s col1.name AS [column],tab2.name AS [referenced_table],col2.name AS [referenced_column] " % sql;
@@ -60,5 +63,15 @@ class SQL():
         sql = "%s ON col1.column_id = parent_column_id AND col1.object_id = tab1.object_id "  % sql
         sql = "%s INNER JOIN sys.tables tab2 ON tab2.object_id = fkc.referenced_object_id " % sql 
         sql = "%s INNER JOIN sys.columns col2 ON col2.column_id = referenced_column_id AND col2.object_id = tab2.object_id " % sql
-        print(sql);
-        
+        cursor.execute(sql);
+        js = {} ;
+        for row in cursor:
+#            print row;
+            if row[2] in js.keys():
+	      tmp = js[row[2]] ;
+              tmp[ row[4] ] =  {'name':row[0],'colun_orign':row[3],'column_dest':row[4]}
+              js[row[2]]= tmp;
+            else:
+              js[row[2]]= {row[4]: {'name':row[0],'colun_orign':row[3],'column_dest':row[4]} };
+        print(js);
+
