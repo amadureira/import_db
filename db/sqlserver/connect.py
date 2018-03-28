@@ -66,12 +66,9 @@ class SQL():
         cursor.execute(sql);
         js = {} ;
         for row in cursor:
-#            print row;
             if row[2] in js.keys():
 	      tmp = js[row[2]] ;
               tmp[ row[4] ] =  {'name':row[0],'colun_orign':row[3],'column_dest':row[4]}
               js[row[2]]= tmp;
             else:
               js[row[2]]= {row[4]: {'name':row[0],'colun_orign':row[3],'column_dest':row[4]} };
-        print(js);
-
