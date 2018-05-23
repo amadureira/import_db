@@ -2,9 +2,13 @@ import pymssql
 
 class SQL():
     orgsrv = "10.128.132.166:1166"
+    orgsrv = "10.128.132.167:1167"
     orgusr =  "usr_des_web"
+    orgusr =  "usr_hom_web"
     orgpwd = "12qwRE$#56tydesweb"
-    orgdb  = "DB_DES_CASASBAHIA_VIA_UNICA_MOBILE"
+    orgpwd = "12qwRE$#56tyhomweb"
+#   orgdb  = "DB_DES_CASASBAHIA_VIA_UNICA_MOBILE"
+    orgdb  = "DB_MADUREIRA"
     orgconn = "";
 #   js = {} ;
     destsrv = "10.128.132.167:1167"
@@ -71,14 +75,14 @@ class SQL():
              if row[4].upper() in tmp.keys():
                #print("Add elementt %s " % row[4].upper());
                #print(tmp);
-               tmp[ row[4].upper() ].append( {'name':row[0],'colun_orign':row[3],'column_dest':row[4]} );
+               tmp[ row[4].upper() ].append( {'name':row[0],'colun_orign':row[3],'column_dest':row[5]} );
              else:
               #print("Create array")
               #print(tmp)
-               tmp[ row[4].upper() ] = [ {'name':row[0],'colun_orign':row[3],'column_dest':row[4]}]
+               tmp[ row[4].upper() ] = [ {'name':row[0],'colun_orign':row[3],'column_dest':row[5]}]
              js[row[2].upper()]= tmp;
             else:
-             js[row[2].upper()]= {row[4].upper():[ {'name':row[0],'colun_orign':row[3],'column_dest':row[4]}] };
+             js[row[2].upper()]= {row[4].upper():[ {'name':row[0],'colun_orign':row[3],'column_dest':row[5]}] };
         return(js);
     def searchREll(self,mainTable,jsConfig):
        for k in jsConfig.keys():
@@ -102,13 +106,12 @@ class SQL():
          renkey = jsConfig[tmpTable].keys()[0];
          sql = ""
          andCond = "on";
-         sql =  "select %s.* from %s inner join %s " % (tmpTable,tmpTable, renkey );# on %s = %s "% (tmpTable,tmpTable, renkey, jsConfig[tmpTable][renkey]['colun_orign'], jsConfig[tmpTable][renkey]['column_dest']);
+         sql =  "select %s.* from %s inner join %s " % (tmpTable,tmpTable, renkey );
+         # on %s = %s "% (tmpTable,tmpTable, renkey, jsConfig[tmpTable][renkey]['colun_orign'], jsConfig[tmpTable][renkey]['column_dest']);
          for row in jsConfig[tmpTable][renkey]:
-           sql = " %s %s %s = %s " % ( sql , andCond ,'.'.join([tmpTable,row['colun_orign']]),'.'.join([renkey,row['column_dest']]));
-           andCond =  "and"
-#         print(jsConfig[tmpTable]); 
+          sql = " %s %s %s = %s " % ( sql , andCond ,'.'.join([tmpTable,row['colun_orign']]),'.'.join([renkey,row['column_dest']]));
+          andCond =  "and"
          print(sql);
          del jsConfig[tmpTable][renkey];
          if renkey in jsConfig.keys():
-#           print("Add %s on tmpTable" % renkey);
             tmpTable = renkey;
