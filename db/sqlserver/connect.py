@@ -66,12 +66,49 @@ class SQL():
         cursor.execute(sql);
         js = {} ;
         for row in cursor:
-#            print row;
-            if row[2] in js.keys():
-	      tmp = js[row[2]] ;
-              tmp[ row[4] ] =  {'name':row[0],'colun_orign':row[3],'column_dest':row[4]}
-              js[row[2]]= tmp;
+            if row[2].upper() in js.keys():
+             tmp = js[row[2].upper()];
+             if row[4].upper() in tmp.keys():
+               #print("Add elementt %s " % row[4].upper());
+               #print(tmp);
+               tmp[ row[4].upper() ].append( {'name':row[0],'colun_orign':row[3],'column_dest':row[4]} );
+             else:
+              #print("Create array")
+              #print(tmp)
+               tmp[ row[4].upper() ] = [ {'name':row[0],'colun_orign':row[3],'column_dest':row[4]}]
+             js[row[2].upper()]= tmp;
             else:
-              js[row[2]]= {row[4]: {'name':row[0],'colun_orign':row[3],'column_dest':row[4]} };
-        print(js);
-
+             js[row[2].upper()]= {row[4].upper():[ {'name':row[0],'colun_orign':row[3],'column_dest':row[4]}] };
+        return(js);
+    def searchREll(self,mainTable,jsConfig):
+       for k in jsConfig.keys():
+         if mainTable in  jsConfig[k].keys():
+            return(k) ;
+       return None;
+    def createQuery(self,mainTable,jsConfig):
+       tmpTable = mainTable;
+       renkey = "";
+       while True:
+         if (len(jsConfig[tmpTable].keys()))==0:
+#            print("search rel to table %s " % tmpTable);
+             tmpTable = self.searchREll(tmpTable,jsConfig);
+#            print(jsConfig[tmpTable])
+#            break;
+             if tmpTable is None:
+               break;
+#            print("found rel to table %s " % tmpTable);
+             continue;
+          
+         renkey = jsConfig[tmpTable].keys()[0];
+         sql = ""
+         andCond = "on";
+         sql =  "select %s.* from %s inner join %s " % (tmpTable,tmpTable, renkey );# on %s = %s "% (tmpTable,tmpTable, renkey, jsConfig[tmpTable][renkey]['colun_orign'], jsConfig[tmpTable][renkey]['column_dest']);
+         for row in jsConfig[tmpTable][renkey]:
+           sql = " %s %s %s = %s " % ( sql , andCond ,'.'.join([tmpTable,row['colun_orign']]),'.'.join([renkey,row['column_dest']]));
+           andCond =  "and"
+#         print(jsConfig[tmpTable]); 
+         print(sql);
+         del jsConfig[tmpTable][renkey];
+         if renkey in jsConfig.keys():
+#           print("Add %s on tmpTable" % renkey);
+            tmpTable = renkey;
