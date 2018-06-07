@@ -1,14 +1,15 @@
 import pymssql
+import  sys
 
 class SQL():
     orgsrv = "10.128.132.166:1166"
-    orgsrv = "10.128.132.167:1167"
+#   orgsrv = "10.128.132.167:1167"
     orgusr =  "usr_des_web"
-    orgusr =  "usr_hom_web"
+#   orgusr =  "usr_hom_web"
     orgpwd = "12qwRE$#56tydesweb"
-    orgpwd = "12qwRE$#56tyhomweb"
-#   orgdb  = "DB_DES_CASASBAHIA_VIA_UNICA_MOBILE"
-    orgdb  = "DB_MADUREIRA"
+#   orgpwd = "12qwRE$#56tyhomweb"
+    orgdb  = "DB_DES_CASASBAHIA_VIA_UNICA_MOBILE"
+#   orgdb  = "DB_MADUREIRA"
     orgconn = "";
 #   js = {} ;
     destsrv = "10.128.132.167:1167"
@@ -16,12 +17,14 @@ class SQL():
     destpwd = "12qwRE$#56tyhomweb"
     destdb  = "DB_MADUREIRA"
     destconn = "";
-
+    
     def __init__(self):
         self.orgconn = pymssql.connect(host=self.orgsrv, user=self.orgusr, password=self.orgpwd,database=self.orgdb)
         self.destconn = pymssql.connect(host=self.destsrv, user=self.destusr, password=self.destpwd,database=self.destdb,autocommit=True)
-
+    def logs(self,msg,LEVEL=0):
+        print(msg);
     def getTables(self,DB_NAME):
+        self.logs("Search for tables",1);
         cursorTab = self.orgconn.cursor();
         cursorTab.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES");
         return  cursorTab.fetchall();
@@ -29,8 +32,6 @@ class SQL():
     def createTable(self,tables):
         cursorCol  = self.orgconn.cursor();
         cursorDest = self.destconn.cursor();
-        #cursorDest.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES");
-        #print cursorDest.fetchall();
         for row in tables:
             sqlQuery = ""
             sqlQuery = "%s select CONCAT(CASE WHEN UPPER(COLUMN_NAME) IN('IN','OR','ORDER','AND','DATABASE')" % sqlQuery
@@ -73,45 +74,86 @@ class SQL():
             if row[2].upper() in js.keys():
              tmp = js[row[2].upper()];
              if row[4].upper() in tmp.keys():
-               #print("Add elementt %s " % row[4].upper());
-               #print(tmp);
                tmp[ row[4].upper() ].append( {'name':row[0],'colun_orign':row[3],'column_dest':row[5]} );
              else:
-              #print("Create array")
-              #print(tmp)
                tmp[ row[4].upper() ] = [ {'name':row[0],'colun_orign':row[3],'column_dest':row[5]}]
              js[row[2].upper()]= tmp;
             else:
              js[row[2].upper()]= {row[4].upper():[ {'name':row[0],'colun_orign':row[3],'column_dest':row[5]}] };
         return(js);
     def searchREll(self,mainTable,jsConfig):
+       self.logs(("Search for relation for table %s" % mainTable ),1);
        for k in jsConfig.keys():
          if mainTable in  jsConfig[k].keys():
+            self.logs("Found %s table related with %s" % (k,mainTable));
             return(k) ;
+       
        return None;
-    def createQuery(self,mainTable,jsConfig):
-       tmpTable = mainTable;
-       renkey = "";
+    def createQuery(self,sql,mainTable,jsConfig):
+       tmpTable        = mainTable;
+       renkey          = "";
+       jsVal           = {};
+       jsVal[tmpTable] = self.getSelect(sql);
+       self.logs("Start",1);
        while True:
+         self.logs("Start While");
          if (len(jsConfig[tmpTable].keys()))==0:
-#            print("search rel to table %s " % tmpTable);
              tmpTable = self.searchREll(tmpTable,jsConfig);
-#            print(jsConfig[tmpTable])
-#            break;
              if tmpTable is None:
                break;
-#            print("found rel to table %s " % tmpTable);
              continue;
-          
-         renkey = jsConfig[tmpTable].keys()[0];
+         renkey = (list(jsConfig[tmpTable])[0]);
+         self.logs("Search on %s table from table %s" % (renkey,tmpTable));
          sql = ""
-         andCond = "on";
-         sql =  "select %s.* from %s inner join %s " % (tmpTable,tmpTable, renkey );
-         # on %s = %s "% (tmpTable,tmpTable, renkey, jsConfig[tmpTable][renkey]['colun_orign'], jsConfig[tmpTable][renkey]['column_dest']);
+         andCond = "";
+         sql =  "select * from %s where " % renkey;
          for row in jsConfig[tmpTable][renkey]:
-          sql = " %s %s %s = %s " % ( sql , andCond ,'.'.join([tmpTable,row['colun_orign']]),'.'.join([renkey,row['column_dest']]));
+          ids=[];
+          for inRow in jsVal[mainTable]:
+            try:
+             ids.append(str(inRow[row['column_dest']]));
+            except  KeyError as e:
+             self.logs("Error ");
+          sql = "%s %s %s in  ( %s )" % (sql,andCond,row['column_dest'],','.join(ids));
           andCond =  "and"
-         print(sql);
+
+         jsVal[renkey] = self.getSelect(sql);
          del jsConfig[tmpTable][renkey];
          if renkey in jsConfig.keys():
             tmpTable = renkey;
+
+    def getSelect(self,Query):
+       try:
+          cursorTab = self.orgconn.cursor();
+          self.logs(Query);
+          cursorTab.execute(Query);
+       except MSSQLDatabaseException as e:
+         self.logs(e);
+
+       except pymssql.OperationalError as e:
+         self.logs(e);
+         self.logs(Query);
+       arrReturn = [];
+       for row in cursorTab:
+          c=0;
+          tmp={};
+          for col in  cursorTab.description:
+             try:
+              if row[c] is  None:
+                 self.logs("Set None");
+                 tmp[col[0]] = None;
+              elif col[1] in [1,4,3]:
+                 self.logs("Set str or int %s" % col[0]);
+                 tmp[col[0]] =   str(row[c]).encode('utf-8') if col[1] in [1,4] else int(row[c]);
+              else:
+                 self.logs("Set Else");
+                 tmp[col[0]] = row[c];
+              c=c+1;   
+             except TypeError as e:
+              self.logs(row[c] is None);
+              self.logs(type(row[c]));
+              sys.exit(0);
+             except ValueError as e:
+              sys.exit(0);
+          arrReturn.append(tmp);
+       return(arrReturn); 
